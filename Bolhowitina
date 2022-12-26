@@ -1,0 +1,238 @@
+#define _CRT_SECURE_NO_DEPRECATE
+
+#include <stdio.h>
+#include <stdlib.h>
+//#include <string.h>
+#include <conio.h>
+#include <windows.h>
+#include <math.h>
+
+#define M_PI 3.14159265358
+#define WIDTH 65     /*ширина игрового поля*/
+#define HEIGHT 25    /*высота игрового поля*/
+
+/*Структура для ракетки-платформы*/
+struct raket_t
+{
+	int x, y;
+	int w;
+};
+typedef struct raket_t Raket_t;
+
+/*Структура для шара*/
+struct ball
+{
+	float x, y;
+	int xi, yi;
+	float ugol;
+	float speed;
+};
+typedef struct ball Ball_t;
+
+int formball(Ball_t* ball_l);									/*помещает шарик на поле и задаёт его угол и скорость*/
+int pokball(float x, float y, Ball_t* ball_l);					/*запоминает положение шарика*/
+int dvigball(Ball_t* ball_l, int* pk, char mas[][WIDTH + 1]);	/*ограничивает и задёт движение шарика*/
+int formraket(Raket_t* raket_t);							    /*помещает ракетку в середину нижней строки*/
+float dvigraket(int x, Raket_t* raket_t);						/*ограничивает движение ракетки*/
+boolean cursor(int x, int y);									/*переводит курсор в начало диалогового окна*/
+
+int main()
+{
+	struct raket_t raketr;                       /*создаем переменную типа raket_t*/
+	struct Raket_t* raket_p = &raketr;           /*создаем указатель*/
+	struct ball balll;                           /*создаем переменную типа ball_t*/
+	struct Ball_t* ball_p = &balll;              /*создаем указатель*/
+	int maxcount = 0;                            /*рекорд отбиваний за одну игру*/
+	int count = 0;                               /*счётчик отбиваний*/
+	int* count_p = &count;                       /*указатель на счётчик*/
+	BOOL run = FALSE;                            /*переменная для начала/конца игры*/
+	char mas[HEIGHT][WIDTH + 1];                 /*массив игрового поля*/
+	int lvl = 1;                                 /*первый уровень*/
+	
+	system("chcp 1251");
+	
+	formraket(raket_p);
+	formball(ball_p);
+	do
+	{
+		cursor(0, 0);
+
+		if (run)                       /*проверка на начало игры (игра запущена)*/
+			dvigball(ball_p, count_p, mas);
+
+		if (balll.yi > HEIGHT) {        /*игра завершена*/
+			run = FALSE;
+			if (count > maxcount) {     /*запись рекорда*/
+				maxcount = count;
+			}
+			count = 0;
+			lvl = 1;
+		}
+
+		/*заполнение игрового поля*/
+		for (int i = 0; i < WIDTH; i++) {
+			mas[0][i] = '#';
+
+
+		}
+		mas[0][WIDTH] = '\0';
+
+		strncpy(mas[1], mas[0], WIDTH + 1);
+		
+		for (int i = 1; i < WIDTH - 1; i++)
+			mas[1][i] = ' ';
+
+		for (int i = 2; i < HEIGHT; i++)
+			strncpy(mas[i], mas[1], WIDTH + 1);
+
+		if (count > 15) {      /*уровень 2 (если  count > 15 перехеодим на уровень 2)*/
+			
+			for (int i = 3; i < 10; i++) {
+				mas[3][i] = '#';
+				mas[14][i] = '#';
+			}
+			
+			lvl = 2;
+		}
+		if (count > 25) {      /*уровень 3 (если  count > 25 перехеодим на уровень 3)*/
+			
+			for (int i = 10; i < 16; i++) {
+				/*здесь можно будет изменить вид стенок*/
+				mas[i][25] = '#';    /*(эта стенка (mas[i][25] = '#') - вертикальная: размер задан циклом for от 10 до 16*/
+				mas[10][i] = '#';    /*(эта стенка (mas[10][i] = '#') - горизонтальная: размер также задан циклом for от 10 до 16*/
+				mas[5][i] = '#';
+				/*также для остальных уровней*/
+			}
+			
+			lvl = 3;
+		}
+		if (count > 35) {     /*уровень 4 (если  count > 35 перехеодим на уровень 3)*/
+			
+			for (int i = 35; i < 48; i++)
+				mas[7][i] = '#';
+			
+			for (int i = 50; i < 55; i++)
+				mas[15][i] = '#';
+			
+			lvl = 4;
+		}
+
+		for (int i = raketr.x; i < raketr.x + raketr.w; i++) {
+			mas[raketr.y][i] = '-';                           /*инициализация ракетки*/
+		}
+
+		mas[balll.yi][balll.xi] = '*';                        /*вид шарика*/
+
+		/*заполнение поля игровой информации*/
+		for (int i = 0; i < HEIGHT; i++) {
+			printf("%s", mas[i]);
+			if (i == 3)
+				printf(" !!! %i ", count);
+			if (i == 4)
+				printf(" max %i ", maxcount);
+			if (i == 5)
+				printf(" Level: %i ", lvl);
+			if (i == 6)
+				printf(" Нажмите W чтобы начать игру ");
+			if (i == 7)
+				printf(" Нажмите V чтобы закончить игру ");
+			if (i == 8) {
+				if (count > 99)
+					printf(" Вы победили ");
+			}
+			if (i < HEIGHT - 1)
+				printf("\n");
+		}
+
+		/*управление платформой и запуск шара*/
+		if (GetKeyState('A') < 0)
+			dvigraket(raketr.x - 1, raket_p);
+		if (GetKeyState('D') < 0)
+			dvigraket(raketr.x + 1, raket_p);
+		if (GetKeyState('W') < 0)
+			run = TRUE;
+		if (!run)
+			pokball(raketr.x + raketr.w / 2, raketr.y - 1, ball_p);
+		Sleep(10);
+
+	} while ((GetKeyState('V') >= 0)); /*конец программы*/
+	return 0;
+}
+
+int formball(Ball_t* ball_l)
+{
+	pokball(2, 2, ball_l);
+	ball_l->ugol = -1;       /*угол траектории движения шарика*/
+	ball_l->speed = 0.5;     /*скорость шарика*/
+	return ball_l;
+}
+
+int pokball(float x, float y, Ball_t* ball_l)
+{
+	ball_l->x = x;
+	ball_l->y = y;
+	ball_l->xi = (int)ball_l->x;          /*запоминаем положение шарика*/
+	ball_l->yi = (int)ball_l->y;
+	return ball_l;
+}
+int dvigball(Ball_t* ball_l, int* pk, char mas[][WIDTH + 1])
+{
+	if (ball_l->ugol < 0)
+		ball_l->ugol += M_PI * 2;
+	if (ball_l->ugol > M_PI * 2)
+		ball_l->ugol -= M_PI * 2;
+
+	Ball_t bl = *ball_l;
+	pokball(ball_l->x + cos(ball_l->ugol) * ball_l->speed, ball_l->y + sin(ball_l->ugol) * ball_l->speed, ball_l);
+
+
+	/*задаём параметры смены траектории движения шара*/
+	if ((mas[ball_l->yi][ball_l->xi] == '#') || (mas[ball_l->yi][ball_l->xi] == '-')) {
+		if (mas[ball_l->yi][ball_l->xi] == '-')
+			(*pk)++;
+
+		/*уравнения смены траектории движения шарика*/
+		if ((ball_l->xi != bl.xi) && (ball_l->yi != bl.yi)) {
+			if (mas[bl.yi][ball_l->xi] == mas[ball_l->yi][bl.xi])
+				bl.ugol = bl.ugol + M_PI;
+			else {
+				if (mas[bl.yi][ball_l->xi] == '#')
+					bl.ugol = (2 * M_PI - bl.ugol) + M_PI;
+				else
+					bl.ugol = (2 * M_PI - bl.ugol);
+			}
+		}
+		else if (ball_l->yi == bl.yi)
+			bl.ugol = (2 * M_PI - bl.ugol) + M_PI;
+		else
+			bl.ugol = (2 * M_PI - bl.ugol);
+
+		*ball_l = bl;
+		dvigball(ball_l, pk, mas);
+	}
+	return ball_l;
+}
+
+/*задаёт положение ракетки в игровом поле*/
+int formraket(Raket_t* raket_t)
+{
+	raket_t->w = 7;
+	raket_t->x = (WIDTH - raket_t->w) / 2;
+	raket_t->y = HEIGHT - 1;
+	return raket_t;
+}
+float dvigraket(int x, Raket_t* raket_t)
+{
+	raket_t->x = x;
+	if (raket_t->x < 1)
+		return raket_t->x = 1;
+	if (raket_t->x + raket_t->w >= WIDTH)           /*не даёт ракетке выйти за пределы игровой рамки и при попытке возвращает её на край игрового поля*/
+		return raket_t->x = WIDTH - 1 - raket_t->w;
+}
+boolean cursor(int x, int y)  /*функция для перемещения курсора*/
+{
+	COORD coord;
+	coord.X = x;
+	coord.Y = y;
+	return SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
+}
